@@ -1,0 +1,41 @@
+# Build outputs
+Debug/
+Release/
+build/
+
+# STM32CubeIDE / Eclipse
+.metadata/
+.settings/
+*.launch
+*.log
+
+# Temporary / user-specific
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Tool-generated local config
+**/.project
+**/.cproject
+
+# CubeIDE internal caches
+**/.mxproject
+
+# CMake if ever generated later
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python cache if scripts are added later
+__pycache__/
+*.pyc
+
+# Test / coverage artifacts
+coverage/
+*.gcda
+*.gcno
+*.gcov
