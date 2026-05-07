@@ -1,0 +1,142 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9">
+  <diagram name="Page-1" id="K-bGOKjg63idx4d_EaHe">
+    <mxGraphModel dx="1426" dy="841" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="IuvEpzVmsSahWigrROtr-34" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#0050ef;strokeColor=#001DBC;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-14">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="384" />
+              <mxPoint x="790" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-36" connectable="0" parent="IuvEpzVmsSahWigrROtr-34" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="GPIO" vertex="1">
+          <mxGeometry relative="1" x="0.0173" y="-1" as="geometry">
+            <mxPoint y="5" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-35" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#0050ef;strokeColor=#001DBC;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="384" />
+              <mxPoint x="790" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-38" connectable="0" parent="IuvEpzVmsSahWigrROtr-35" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="GPIO" vertex="1">
+          <mxGeometry relative="1" x="0.5512" y="-2" as="geometry">
+            <mxPoint x="2" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1" value="STM32 Pump Supervisor" vertex="1">
+          <mxGeometry height="60" width="120" x="525" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&lt;ul&gt;&lt;li&gt;MCU STM32F04&lt;/li&gt;&lt;li&gt;FreeRTOS&lt;/li&gt;&lt;/ul&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="525" y="414" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-3" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="820" as="sourcePoint" />
+            <mxPoint x="400" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-4" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="760" y="820" as="sourcePoint" />
+            <mxPoint x="760" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-5" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="275" y="280" as="sourcePoint" />
+            <mxPoint x="895" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-6" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=14;fontStyle=1" value="Input" vertex="1">
+          <mxGeometry height="30" width="60" x="340" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontStyle=1;fontSize=14;" value="Output" vertex="1">
+          <mxGeometry height="30" width="60" x="770" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-8" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=14;fontStyle=1" value="Communication Interfaces" vertex="1">
+          <mxGeometry height="30" width="60" x="555" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-16" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#a20025;strokeColor=#6F0000;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="370" />
+              <mxPoint x="430" y="384" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-17" connectable="0" parent="IuvEpzVmsSahWigrROtr-16" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="I2C" vertex="1">
+          <mxGeometry relative="1" x="-0.2672" y="-5" as="geometry">
+            <mxPoint x="-15" y="-5" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="Temperature Sensor (&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;MCP9808)&lt;/span&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;Primary thermal Input&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Periodic acquisition&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Sensor status monitoring&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="240" x="40" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-18" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#a20025;strokeColor=#6F0000;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="490" />
+              <mxPoint x="430" y="384" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-33" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#a20025;strokeColor=#6F0000;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-39" connectable="0" parent="IuvEpzVmsSahWigrROtr-33" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Vout" vertex="1">
+          <mxGeometry relative="1" x="-0.7223" y="-2" as="geometry">
+            <mxPoint x="-4" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="Power Supply&lt;div&gt;&lt;ul&gt;&lt;li&gt;MCU supply&lt;/li&gt;&lt;li data-start=&quot;734&quot; data-end=&quot;756&quot; data-section-id=&quot;1m3cfjx&quot;&gt;Actuator supply path&lt;br&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="240" x="40" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="Pump Actuator&lt;div&gt;&lt;ul&gt;&lt;li&gt;ON / OFF control (VN5E050AJ)&lt;/li&gt;&lt;li&gt;Safe state control in degraded mode&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="240" x="885" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="Status LED&lt;div&gt;&lt;ul&gt;&lt;li&gt;Basic local indication&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="240" x="885" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-26" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;fillColor=#008a00;strokeColor=#005700;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="260" />
+              <mxPoint x="585" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-27" connectable="0" parent="IuvEpzVmsSahWigrROtr-26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="CAN 2.0" vertex="1">
+          <mxGeometry relative="1" x="-0.5911" y="-5" as="geometry">
+            <mxPoint x="55" y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-23" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="CAN Bus&amp;nbsp;&lt;div&gt;&lt;ul&gt;&lt;li&gt;Hearthbeat&lt;/li&gt;&lt;li&gt;Thermal status&lt;/li&gt;&lt;li&gt;Fault status&lt;/li&gt;&lt;li&gt;System metrics&lt;/li&gt;&lt;li&gt;Diagnostic command&lt;/li&gt;&lt;li&gt;Snapshot response&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="140" width="240" x="280" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-28" edge="1" parent="1" source="IuvEpzVmsSahWigrROtr-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;fillColor=#008a00;strokeColor=#005700;strokeWidth=3;" target="IuvEpzVmsSahWigrROtr-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="765" y="260" />
+              <mxPoint x="585" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-29" connectable="0" parent="IuvEpzVmsSahWigrROtr-28" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="UART" vertex="1">
+          <mxGeometry relative="1" x="-0.2611" as="geometry">
+            <mxPoint x="-19" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IuvEpzVmsSahWigrROtr-24" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="Debug UART&lt;div&gt;&lt;ul&gt;&lt;li&gt;Local debug traces&lt;/li&gt;&lt;li&gt;Bring-up support&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="140" width="240" x="645" y="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
