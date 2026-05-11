@@ -23,6 +23,10 @@
 #include "main.h"
 #include "cmsis_os.h"
 
+#include "usart.h"
+#include <string.h>
+
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -215,7 +219,9 @@ void StartTaskDiag(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    const char *msg = "SYSTEM RUNNING\r\n";
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    osDelay(1000);
   }
   /* USER CODE END StartTaskDiag */
 }

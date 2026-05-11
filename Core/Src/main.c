@@ -17,6 +17,8 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <string.h>
+
 #include "main.h"
 #include "cmsis_os.h"
 #include "can.h"
@@ -47,6 +49,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+uint8_t tx_buffer[32];
 
 /* USER CODE END PV */
 
@@ -94,7 +97,11 @@ int main(void)
   MX_I2C1_Init();
   MX_CAN1_Init();
   MX_USART3_UART_Init();
+
   /* USER CODE BEGIN 2 */
+  /* SETUP */
+  strcpy((char*)tx_buffer, "SYSTEM INIT\r\n");
+  HAL_UART_Transmit(&huart3, tx_buffer, strlen((char*)tx_buffer), HAL_MAX_DELAY);
 
   /* USER CODE END 2 */
 
@@ -112,7 +119,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -164,7 +171,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /**
