@@ -23,9 +23,9 @@
 #include "main.h"
 #include "cmsis_os.h"
 
-#include "usart.h"
 #include <string.h>
-
+#include "usart.h"
+#include "mcp9808_drv.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -180,10 +180,23 @@ void StartDefaultTask(void *argument)
 void StartTaskSense(void *argument)
 {
   /* USER CODE BEGIN StartTaskSense */
+  const char *detected_msg = "MCP9808 detected\r\n";
+  const char *not_detected_msg = "MCP9808 not detected\r\n";
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    /* Ensure that sensor is ready on I2C bus */
+    if (mcp9808_drv_is_detected())
+    {
+        HAL_UART_Transmit(&huart3, (uint8_t *)detected_msg, strlen(detected_msg), HAL_MAX_DELAY);
+    }
+    else
+    {
+        HAL_UART_Transmit(&huart3, (uint8_t *)not_detected_msg, strlen(not_detected_msg), HAL_MAX_DELAY);
+    }
+
+    osDelay(5000);
   }
   /* USER CODE END StartTaskSense */
 }
