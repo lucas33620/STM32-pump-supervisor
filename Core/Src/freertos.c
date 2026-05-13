@@ -181,24 +181,61 @@ void StartDefaultTask(void *argument)
 /* USER CODE END Header_StartTaskSense */
 void StartTaskSense(void *argument)
 {
-  /* USER CODE BEGIN StartTaskSense */
-  const char *detected_msg = "MCP9808 detected\r\n";
-  const char *not_detected_msg = "MCP9808 not detected\r\n";
+  int16_t temp_x10;
+  int16_t temp_int;
+  int16_t temp_frac;
+  Mcp9808Status mcp9808_status;
+  Mcp9808Ctx mcp9808_ctx;
+  char temp_msg[32];
 
-  /* Infinite loop */
-  for(;;)
+  mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
+  if (mcp9808_status != MCP9808_STATUS_OK)
   {
-    /* Ensure that sensor is ready on I2C bus */
-    if (mcp9808_drv_is_detected())
+    HAL_UART_Transmit(&huart3,
+                      (uint8_t *)"MCP9808 init FAIL\r\n",
+                      strlen("MCP9808 init FAIL\r\n"),
+                      HAL_MAX_DELAY);
+
+    for (;;)
     {
-        HAL_UART_Transmit(&huart3, (uint8_t *)detected_msg, strlen(detected_msg), HAL_MAX_DELAY);
+      osDelay(1000U);
+    }
+  }
+
+  for (;;)
+  {
+    mcp9808_status = mcp9808_drv_get_temperature_x10(&mcp9808_ctx, &temp_x10);
+
+    if (mcp9808_status == MCP9808_STATUS_OK)
+    {
+      temp_int = temp_x10 / 10;
+      temp_frac = temp_x10 % 10;
+
+      if (temp_frac < 0)
+      {
+        temp_frac = -temp_frac;
+      }
+
+      (void)snprintf(temp_msg,
+                      sizeof(temp_msg),
+                      "MCP9808 temp=%d.%d C\r\n",
+                      temp_int,
+                      temp_frac);
+
+      HAL_UART_Transmit(&huart3,
+                        (uint8_t *)temp_msg,
+                        strlen(temp_msg),
+                        HAL_MAX_DELAY);
     }
     else
     {
-        HAL_UART_Transmit(&huart3, (uint8_t *)not_detected_msg, strlen(not_detected_msg), HAL_MAX_DELAY);
+      HAL_UART_Transmit(&huart3,
+                        (uint8_t *)"MCP9808 temp read FAIL\r\n",
+                        strlen("MCP9808 temp read FAIL\r\n"),
+                        HAL_MAX_DELAY);
     }
 
-    osDelay(5000);
+    osDelay(1000U);
   }
   /* USER CODE END StartTaskSense */
 }
