@@ -25,6 +25,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
+#include "usart.h"
+#include "can.h"
+#include "mcp9808_drv.h"
+#include "bsp_can.h"
 
 /* USER CODE END Includes */
 
@@ -176,10 +182,23 @@ void StartDefaultTask(void *argument)
 void StartTaskSense(void *argument)
 {
   /* USER CODE BEGIN StartTaskSense */
+  const char *detected_msg = "MCP9808 detected\r\n";
+  const char *not_detected_msg = "MCP9808 not detected\r\n";
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    /* Ensure that sensor is ready on I2C bus */
+    if (mcp9808_drv_is_detected())
+    {
+        HAL_UART_Transmit(&huart3, (uint8_t *)detected_msg, strlen(detected_msg), HAL_MAX_DELAY);
+    }
+    else
+    {
+        HAL_UART_Transmit(&huart3, (uint8_t *)not_detected_msg, strlen(not_detected_msg), HAL_MAX_DELAY);
+    }
+
+    osDelay(5000);
   }
   /* USER CODE END StartTaskSense */
 }
@@ -211,13 +230,118 @@ void StartTaskControl(void *argument)
 /* USER CODE END Header_StartTaskDiag */
 void StartTaskDiag(void *argument)
 {
-  /* USER CODE BEGIN StartTaskDiag */
-  /* Infinite loop */
-  for(;;)
+  uint8_t tx_data[8] = {0};
+  uint8_t rx_data[8] = {0};
+  uint8_t counter = 0U;
+  uint8_t reset_cause = 0x01U;
+  uint8_t status_flags = 0x00U;
+  uint16_t heartbeat_ticks = 0U;
+
+  CAN_TxHeaderTypeDef tx_header = {0};
+  CAN_RxHeaderTypeDef rx_header = {0};
+  uint32_t tx_mailbox = 0U;
+  char msg[64];
+
+  if (bsp_can_init_loopback_filter(&hcan1) != HAL_OK)
   {
-    osDelay(1);
+    snprintf(msg, sizeof(msg), "CAN filter init FAIL\r\n");
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    /* SLEEP */
+    for (;;)
+    {
+      osDelay(1000);
+    }
   }
-  /* USER CODE END StartTaskDiag */
+
+  snprintf(msg, sizeof(msg), "CAN filter init OK\r\n");
+  HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+
+  if (bsp_can_start(&hcan1) != HAL_OK)
+  {
+    snprintf(msg, sizeof(msg), "CAN start FAIL\r\n");
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    /* SLEEP */
+    for (;;)
+    {
+      osDelay(1000);
+    }
+  }
+
+  snprintf(msg, sizeof(msg), "CAN start OK\r\n");
+  HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+
+  tx_header.StdId = 0x180U;
+  tx_header.ExtId = 0x00U;
+  tx_header.IDE = CAN_ID_STD;
+  tx_header.RTR = CAN_RTR_DATA;
+  tx_header.DLC = 8U;
+  tx_header.TransmitGlobalTime = DISABLE;
+
+  for (;;)
+  {
+    tx_data[0] = counter;
+    tx_data[1] = reset_cause;
+    tx_data[2] = status_flags;
+    tx_data[3] = 0x00U;
+    tx_data[4] = (uint8_t)((heartbeat_ticks >> 8) & 0xFFU);
+    tx_data[5] = (uint8_t)(heartbeat_ticks & 0xFFU);
+    tx_data[6] = 0x00U;
+    tx_data[7] = 0x00U;
+
+    if (bsp_can_send(&hcan1, &tx_header, tx_data, &tx_mailbox) == HAL_OK)
+    {
+      snprintf(msg, sizeof(msg), "CAN TX heartbeat cnt=%u\r\n", counter);
+      HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    }
+    else
+    {
+      snprintf(msg, sizeof(msg), "CAN TX FAIL\r\n");
+      HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    }
+
+    osDelay(10);
+
+    if (HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) > 0U)
+    {
+      if (bsp_can_receive(&hcan1, &rx_header, rx_data) == HAL_OK)
+      {
+        if ((rx_header.StdId == tx_header.StdId) &&
+            (rx_header.DLC == tx_header.DLC) &&
+            (rx_data[0] == counter))
+        {
+          snprintf(msg, sizeof(msg), "CAN RX heartbeat cnt=%u\r\n", rx_data[0]);
+          HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+
+          snprintf(msg, sizeof(msg),
+          "CAN RX id=0x%03lX dlc=%u data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+          rx_header.StdId,
+          rx_header.DLC,
+          rx_data[0], rx_data[1], rx_data[2], rx_data[3],
+          rx_data[4], rx_data[5], rx_data[6], rx_data[7]);
+          HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+        }
+        else
+        {
+          snprintf(msg, sizeof(msg), "CAN RX data mismatch\r\n");
+          HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+        }
+      }
+      else
+      {
+        snprintf(msg, sizeof(msg), "CAN RX read FAIL\r\n");
+        HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+      }
+    }
+    else
+    {
+      snprintf(msg, sizeof(msg), "CAN RX empty\r\n");
+      HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    }
+
+    counter++;
+    heartbeat_ticks++;
+    osDelay(500);
+  }
 }
 
 /* USER CODE BEGIN Header_StartTaskSupervisor */
