@@ -32,6 +32,7 @@
 #include "mcp9808_drv.h"
 #include "bsp_can.h"
 #include "pump_drv.h"
+#include "operating_modes.h"
 
 /* USER CODE END Includes */
 
@@ -339,10 +340,34 @@ void StartTaskDiag(void *argument)
 void StartTaskSupervisor(void *argument)
 {
   /* USER CODE BEGIN StartTaskSupervisor */
+  static uint8_t modes_test_done = 0U;
+  char msg[32];
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    if (modes_test_done == 0U)
+    {
+        operating_modes_init();
+
+        snprintf(msg, sizeof(msg), "MODE: %s\r\n",
+                 operating_modes_to_string(operating_modes_get_current()));
+        HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+
+        OperatingMode previous_mode = operating_modes_get_current();
+
+        if (operating_modes_on_initialization_successful() == 1U)
+        {
+            snprintf(msg, sizeof(msg), "MODE CHANGE: %s -> %s\r\n",
+                     operating_modes_to_string(previous_mode),
+                     operating_modes_to_string(operating_modes_get_current()));
+            HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+        }
+
+        modes_test_done = 1U;
+    }
+
+    osDelay(1000);
   }
   /* USER CODE END StartTaskSupervisor */
 }
