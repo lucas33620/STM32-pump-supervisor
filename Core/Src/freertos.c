@@ -174,6 +174,74 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
+static const char *mcp9808_status_to_string(Mcp9808Status status)
+{
+    const char *status_str = "UNKNOWN";
+
+    switch (status)
+    {
+        case MCP9808_STATUS_OK:
+            status_str = "OK";
+            break;
+
+        case MCP9808_STATUS_ERR_INIT:
+            status_str = "ERR_INIT";
+            break;
+
+        case MCP9808_STATUS_ERR_PARAM:
+            status_str = "ERR_PARAM";
+            break;
+
+        case MCP9808_STATUS_ERR_I2C:
+            status_str = "ERR_I2C";
+            break;
+
+        case MCP9808_STATUS_ERR_TIMEOUT:
+            status_str = "ERR_TIMEOUT";
+            break;
+
+        case MCP9808_STATUS_ERR_INVALID_TEMP:
+            status_str = "ERR_INVALID_TEMP";
+            break;
+
+        case MCP9808_STATUS_ERR_FAULT:
+            status_str = "ERR_FAULT";
+            break;
+
+        default:
+            status_str = "UNKNOWN";
+            break;
+    }
+
+    return status_str;
+}
+
+static const char *mcp9808_state_to_string(Mcp9808State state)
+{
+    const char *state_str = "UNKNOWN";
+
+    switch (state)
+    {
+        case MCP9808_STATE_UNINIT:
+            state_str = "UNINIT";
+            break;
+
+        case MCP9808_STATE_READY:
+            state_str = "READY";
+            break;
+
+        case MCP9808_STATE_FAULT:
+            state_str = "FAULT";
+            break;
+
+        default:
+            state_str = "UNKNOWN";
+            break;
+    }
+
+    return state_str;
+}
+
 /* USER CODE BEGIN Header_StartTaskSense */
 /**
 * @brief Function implementing the task_sense thread.
@@ -183,63 +251,113 @@ void StartDefaultTask(void *argument)
 /* USER CODE END Header_StartTaskSense */
 void StartTaskSense(void *argument)
 {
-  int16_t temp_x10;
-  int16_t temp_int;
-  int16_t temp_frac;
-  Mcp9808Status mcp9808_status;
-  Mcp9808Ctx mcp9808_ctx;
-  char temp_msg[32];
+    int16_t temp_x10;
+    int16_t temp_int;
+    int16_t temp_frac;
+    Mcp9808Status mcp9808_status;
+    Mcp9808Status recover_status;
+    Mcp9808Ctx mcp9808_ctx;
+    char temp_msg[128];
 
-  mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
-  if (mcp9808_status != MCP9808_STATUS_OK)
-  {
+    mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
+    if (mcp9808_status != MCP9808_STATUS_OK)
+    {
+        (void)snprintf(temp_msg,
+                       sizeof(temp_msg),
+                       "MCP9808 init FAIL status=%s\r\n",
+                       mcp9808_status_to_string(mcp9808_status));
+
+        HAL_UART_Transmit(&huart3,
+                          (uint8_t *)temp_msg,
+                          strlen(temp_msg),
+                          HAL_MAX_DELAY);
+
+        for (;;)
+        {
+            osDelay(1000U);
+        }
+    }
+
     HAL_UART_Transmit(&huart3,
-                      (uint8_t *)"MCP9808 init FAIL\r\n",
-                      strlen("MCP9808 init FAIL\r\n"),
+                      (uint8_t *)"MCP9808 init OK\r\n",
+                      strlen("MCP9808 init OK\r\n"),
                       HAL_MAX_DELAY);
 
     for (;;)
     {
-      osDelay(1000U);
+        mcp9808_status = mcp9808_drv_get_temperature_x10(&mcp9808_ctx, &temp_x10);
+
+        if (mcp9808_status == MCP9808_STATUS_OK)
+        {
+            temp_int = temp_x10 / 10;
+            temp_frac = temp_x10 % 10;
+
+            if (temp_frac < 0)
+            {
+                temp_frac = -temp_frac;
+            }
+
+            (void)snprintf(temp_msg,
+                           sizeof(temp_msg),
+                           "TEMP=%d.%d C | state=%s active=%s last=%s faults=%u consec=%u\r\n",
+                           temp_int,
+                           temp_frac,
+                           mcp9808_state_to_string(mcp9808_ctx.state),
+                           mcp9808_status_to_string(mcp9808_ctx.active_error),
+                           mcp9808_status_to_string(mcp9808_ctx.last_error),
+                           (unsigned int)mcp9808_ctx.fault_count,
+                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+
+            HAL_UART_Transmit(&huart3,
+                              (uint8_t *)temp_msg,
+                              strlen(temp_msg),
+                              HAL_MAX_DELAY);
+        }
+        else
+        {
+            (void)snprintf(temp_msg,
+                           sizeof(temp_msg),
+                           "READ FAIL status=%s | state=%s active=%s last=%s faults=%u consec=%u\r\n",
+                           mcp9808_status_to_string(mcp9808_status),
+                           mcp9808_state_to_string(mcp9808_ctx.state),
+                           mcp9808_status_to_string(mcp9808_ctx.active_error),
+                           mcp9808_status_to_string(mcp9808_ctx.last_error),
+                           (unsigned int)mcp9808_ctx.fault_count,
+                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+
+            HAL_UART_Transmit(&huart3,
+                              (uint8_t *)temp_msg,
+                              strlen(temp_msg),
+                              HAL_MAX_DELAY);
+        }
+
+        if (mcp9808_ctx.state == MCP9808_STATE_FAULT)
+        {
+            HAL_UART_Transmit(&huart3,
+                              (uint8_t *)"MCP9808 FAULT -> recover request\r\n",
+                              strlen("MCP9808 FAULT -> recover request\r\n"),
+                              HAL_MAX_DELAY);
+
+            recover_status = mcp9808_drv_recover(&mcp9808_ctx);
+
+            (void)snprintf(temp_msg,
+                           sizeof(temp_msg),
+                           "RECOVER status=%s | state=%s active=%s last=%s faults=%u consec=%u\r\n",
+                           mcp9808_status_to_string(recover_status),
+                           mcp9808_state_to_string(mcp9808_ctx.state),
+                           mcp9808_status_to_string(mcp9808_ctx.active_error),
+                           mcp9808_status_to_string(mcp9808_ctx.last_error),
+                           (unsigned int)mcp9808_ctx.fault_count,
+                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+
+            HAL_UART_Transmit(&huart3,
+                              (uint8_t *)temp_msg,
+                              strlen(temp_msg),
+                              HAL_MAX_DELAY);
+        }
+
+        osDelay(1000U);
     }
-  }
-
-  for (;;)
-  {
-    mcp9808_status = mcp9808_drv_get_temperature_x10(&mcp9808_ctx, &temp_x10);
-
-    if (mcp9808_status == MCP9808_STATUS_OK)
-    {
-      temp_int = temp_x10 / 10;
-      temp_frac = temp_x10 % 10;
-
-      if (temp_frac < 0)
-      {
-        temp_frac = -temp_frac;
-      }
-
-      (void)snprintf(temp_msg,
-                      sizeof(temp_msg),
-                      "MCP9808 temp=%d.%d C\r\n",
-                      temp_int,
-                      temp_frac);
-
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)temp_msg,
-                        strlen(temp_msg),
-                        HAL_MAX_DELAY);
-    }
-    else
-    {
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)"MCP9808 temp read FAIL\r\n",
-                        strlen("MCP9808 temp read FAIL\r\n"),
-                        HAL_MAX_DELAY);
-    }
-
-    osDelay(1000U);
-  }
-  /* USER CODE END StartTaskSense */
 }
 
 /* USER CODE BEGIN Header_StartTaskControl */
@@ -252,61 +370,10 @@ void StartTaskSense(void *argument)
 void StartTaskControl(void *argument)
 {
   /* USER CODE BEGIN StartTaskControl */
-  PumpCtx pump_ctx;
-  PumpStatus pump_status;
-
-  pump_status = pump_drv_init(&pump_ctx, PUMP_CMD_GPIO_Port, PUMP_CMD_Pin);
-  
-  if (pump_status != PUMP_STATUS_OK)
-  {
-    HAL_UART_Transmit(&huart3,
-                      (uint8_t *)"Pump init FAIL\r\n",
-                      strlen("Pump init FAIL\r\n"),
-                      HAL_MAX_DELAY);
-
-    for (;;)
-    {
-      osDelay(1000U);
-    }
-  }
 
   /* Infinite loop */
   for(;;)
   {
-    /* Drive pump command output high */
-    pump_status = pump_drv_set_on(&pump_ctx);
-    if (pump_status != PUMP_STATUS_OK)
-    {
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)"Pump ON FAIL\r\n",
-                        strlen("Pump ON FAIL\r\n"),
-                        HAL_MAX_DELAY);
-    }
-    else
-    {
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)"Pump ON\r\n",
-                        strlen("Pump ON\r\n"),
-                        HAL_MAX_DELAY);
-    }
-
-    osDelay(1000U);
-
-    pump_status = pump_drv_set_off(&pump_ctx);
-    if (pump_status != PUMP_STATUS_OK)
-    {
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)"Pump OFF FAIL\r\n",
-                        strlen("Pump OFF FAIL\r\n"),
-                        HAL_MAX_DELAY);
-    }
-    else
-    {
-      HAL_UART_Transmit(&huart3,
-                        (uint8_t *)"Pump OFF\r\n",
-                        strlen("Pump OFF\r\n"),
-                        HAL_MAX_DELAY);
-    }
 
     osDelay(1000U);
   }
@@ -340,33 +407,10 @@ void StartTaskDiag(void *argument)
 void StartTaskSupervisor(void *argument)
 {
   /* USER CODE BEGIN StartTaskSupervisor */
-  static uint8_t modes_test_done = 0U;
-  char msg[32];
 
   /* Infinite loop */
   for(;;)
   {
-    if (modes_test_done == 0U)
-    {
-        operating_modes_init();
-
-        snprintf(msg, sizeof(msg), "MODE: %s\r\n",
-                 operating_modes_to_string(operating_modes_get_current()));
-        HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
-
-        OperatingMode previous_mode = operating_modes_get_current();
-
-        if (operating_modes_on_initialization_successful() == 1U)
-        {
-            snprintf(msg, sizeof(msg), "MODE CHANGE: %s -> %s\r\n",
-                     operating_modes_to_string(previous_mode),
-                     operating_modes_to_string(operating_modes_get_current()));
-            HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
-        }
-
-        modes_test_done = 1U;
-    }
-
     osDelay(1000);
   }
   /* USER CODE END StartTaskSupervisor */
