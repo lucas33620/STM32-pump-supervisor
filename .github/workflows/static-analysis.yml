@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   cppcheck:
     runs-on: ubuntu-latest
@@ -13,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Install cppcheck
         run: |
@@ -21,12 +26,10 @@ jobs:
 
       - name: Run static analysis
         run: |
-          INCLUDE_DIRS=$(find . -type d \( -name Inc -o -name Include \) \
-            -not -path "./.git/*" \
+          INCLUDE_DIRS="$(find App Services Drivers_ext BSP RTOS Common \
+            -type d \( -name Inc -o -name Include \) \
             | sed 's/^/-I/' \
-            | tr '\n' ' ')
-
-          set +e
+            | tr '\n' ' ') -ICore/Inc"
 
           cppcheck \
             --std=c11 \
@@ -37,8 +40,7 @@ jobs:
             --suppress=missingIncludeSystem \
             --template="{file}:{line}: {severity}: {message} [{id}]" \
             $INCLUDE_DIRS \
-            Core/Src Core/Inc \
-            App Services Drivers BSP RTOS Common \
+            App Services Drivers_ext BSP RTOS Common \
             2> cppcheck-result.txt
 
           echo "## Cppcheck static analysis result" >> $GITHUB_STEP_SUMMARY
