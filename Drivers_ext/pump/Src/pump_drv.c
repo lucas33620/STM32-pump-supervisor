@@ -10,7 +10,6 @@
  */
 
 /** @section Include */
-#include "stm32f4xx_hal.h"
 #include "pump_drv.h"
 
 /** @section Define*/

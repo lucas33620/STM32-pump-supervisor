@@ -13,6 +13,7 @@
 #define PUMP_DRV_H
 
 /** @section Include */
+#include "stm32f4xx_hal.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "pump_cfg.h"
