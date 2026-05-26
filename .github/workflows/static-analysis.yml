@@ -1,0 +1,60 @@
+name: Static analysis
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  cppcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+
+      - name: Run static analysis
+        run: |
+          INCLUDE_DIRS=$(find . -type d \( -name Inc -o -name Include \) \
+            -not -path "./.git/*" \
+            | sed 's/^/-I/' \
+            | tr '\n' ' ')
+
+          set +e
+
+          cppcheck \
+            --std=c11 \
+            --enable=warning,style,performance,portability \
+            --inline-suppr \
+            --force \
+            --suppress=missingInclude \
+            --suppress=missingIncludeSystem \
+            --template="{file}:{line}: {severity}: {message} [{id}]" \
+            $INCLUDE_DIRS \
+            Core/Src Core/Inc \
+            App Services Drivers BSP RTOS Common \
+            2> cppcheck-result.txt
+
+          echo "## Cppcheck static analysis result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -s cppcheck-result.txt ]; then
+            echo "Cppcheck found issues:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            cat cppcheck-result.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            echo "Cppcheck found issues:"
+            cat cppcheck-result.txt
+            exit 1
+          else
+            echo "No issue found." >> $GITHUB_STEP_SUMMARY
+            echo "No issue found."
+          fi
