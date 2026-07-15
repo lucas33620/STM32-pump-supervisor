@@ -100,7 +100,7 @@ Mcp9808Status mcp9808_drv_get_fault_count(const Mcp9808Ctx *ctx, uint16_t *out_f
  * 
  * @return MCP9808_STATUS_OK if the active error status was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
  */
-Mcp9808Status mcp9808_drv_get_active_error(Mcp9808Ctx *ctx, Mcp9808Status *out_active_error);
+Mcp9808Status mcp9808_drv_get_active_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_active_error);
 
 /** @brief Gets the last error status of the MCP9808 sensor.
  * 
@@ -109,7 +109,7 @@ Mcp9808Status mcp9808_drv_get_active_error(Mcp9808Ctx *ctx, Mcp9808Status *out_a
  * 
  * @return MCP9808_STATUS_OK if the last error status was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
  */
-Mcp9808Status mcp9808_drv_get_last_error(Mcp9808Ctx *ctx, Mcp9808Status *out_last_error);
+Mcp9808Status mcp9808_drv_get_last_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_last_error);
 
 /** @brief Attempts to recover the MCP9808 sensor from a fault state by reinitializing it.
  * 

@@ -329,7 +329,7 @@ Mcp9808Status mcp9808_drv_get_fault_count(const Mcp9808Ctx *ctx, uint16_t *out_f
 
 /** @brief Gets the active error status of the MCP9808 sensor.
  */
-Mcp9808Status mcp9808_drv_get_active_error(Mcp9808Ctx *ctx, Mcp9808Status *out_active_error)
+Mcp9808Status mcp9808_drv_get_active_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_active_error)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
 
@@ -351,7 +351,7 @@ Mcp9808Status mcp9808_drv_get_active_error(Mcp9808Ctx *ctx, Mcp9808Status *out_a
 
 /** @brief Gets the last error status of the MCP9808 sensor.
  */
-Mcp9808Status mcp9808_drv_get_last_error(Mcp9808Ctx *ctx, Mcp9808Status *out_last_error)
+Mcp9808Status mcp9808_drv_get_last_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_last_error)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
 
