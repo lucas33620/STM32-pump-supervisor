@@ -33,6 +33,8 @@
 #include "bsp_can.h"
 #include "pump_drv.h"
 #include "operating_modes.h"
+#include "thermal_supervision.h"
+#include "control_logic.h"
 
 /* USER CODE END Includes */
 
@@ -216,32 +218,6 @@ static const char *mcp9808_status_to_string(Mcp9808Status status)
     return status_str;
 }
 
-static const char *mcp9808_state_to_string(Mcp9808State state)
-{
-    const char *state_str = "UNKNOWN";
-
-    switch (state)
-    {
-        case MCP9808_STATE_UNINIT:
-            state_str = "UNINIT";
-            break;
-
-        case MCP9808_STATE_READY:
-            state_str = "READY";
-            break;
-
-        case MCP9808_STATE_FAULT:
-            state_str = "FAULT";
-            break;
-
-        default:
-            state_str = "UNKNOWN";
-            break;
-    }
-
-    return state_str;
-}
-
 /* USER CODE BEGIN Header_StartTaskSense */
 /**
 * @brief Function implementing the task_sense thread.
@@ -251,13 +227,16 @@ static const char *mcp9808_state_to_string(Mcp9808State state)
 /* USER CODE END Header_StartTaskSense */
 void StartTaskSense(void *argument)
 {
+    /* USER CODE BEGIN StartTaskSense */
     int16_t temp_x10;
-    int16_t temp_int;
-    int16_t temp_frac;
+    char temp_msg[128];
+
     Mcp9808Status mcp9808_status;
     Mcp9808Status recover_status;
+    Mcp9808Status state_status;
+    Mcp9808State mcp9808_state;
     Mcp9808Ctx mcp9808_ctx;
-    char temp_msg[128];
+    ThermalSupervisionState supervision_state = THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT;
 
     mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
     if (mcp9808_status != MCP9808_STATUS_OK)
@@ -274,14 +253,19 @@ void StartTaskSense(void *argument)
 
         for (;;)
         {
+            thermal_supervision_set_invalid_measurement();
+            mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
+             if (mcp9808_status == MCP9808_STATUS_OK)
+             {
+                HAL_UART_Transmit(&huart3,
+                                    (uint8_t *)"MCP9808 init recovery OK\r\n",
+                                    strlen("MCP9808 init recovery OK\r\n"),
+                                    HAL_MAX_DELAY);
+                break;
+             }
             osDelay(1000U);
         }
     }
-
-    HAL_UART_Transmit(&huart3,
-                      (uint8_t *)"MCP9808 init OK\r\n",
-                      strlen("MCP9808 init OK\r\n"),
-                      HAL_MAX_DELAY);
 
     for (;;)
     {
@@ -289,24 +273,14 @@ void StartTaskSense(void *argument)
 
         if (mcp9808_status == MCP9808_STATUS_OK)
         {
-            temp_int = temp_x10 / 10;
-            temp_frac = temp_x10 % 10;
-
-            if (temp_frac < 0)
-            {
-                temp_frac = -temp_frac;
-            }
+            supervision_state = thermal_supervision_update_valid_temperature(temp_x10);
 
             (void)snprintf(temp_msg,
                            sizeof(temp_msg),
-                           "TEMP=%d.%d C | state=%s active=%s last=%s faults=%u consec=%u\r\n",
-                           temp_int,
-                           temp_frac,
-                           mcp9808_state_to_string(mcp9808_ctx.state),
-                           mcp9808_status_to_string(mcp9808_ctx.active_error),
-                           mcp9808_status_to_string(mcp9808_ctx.last_error),
-                           (unsigned int)mcp9808_ctx.fault_count,
-                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+                           "TEMP=%d.%dC state=%d\r\n",
+                           temp_x10 / 10,
+                           (temp_x10 < 0) ? (-temp_x10 % 10) : (temp_x10 % 10),
+                           (int)supervision_state);
 
             HAL_UART_Transmit(&huart3,
                               (uint8_t *)temp_msg,
@@ -315,15 +289,12 @@ void StartTaskSense(void *argument)
         }
         else
         {
+            thermal_supervision_set_invalid_measurement();
+
             (void)snprintf(temp_msg,
                            sizeof(temp_msg),
-                           "READ FAIL status=%s | state=%s active=%s last=%s faults=%u consec=%u\r\n",
-                           mcp9808_status_to_string(mcp9808_status),
-                           mcp9808_state_to_string(mcp9808_ctx.state),
-                           mcp9808_status_to_string(mcp9808_ctx.active_error),
-                           mcp9808_status_to_string(mcp9808_ctx.last_error),
-                           (unsigned int)mcp9808_ctx.fault_count,
-                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+                           "TEMP read FAIL status=%s\r\n",
+                           mcp9808_status_to_string(mcp9808_status));
 
             HAL_UART_Transmit(&huart3,
                               (uint8_t *)temp_msg,
@@ -331,7 +302,8 @@ void StartTaskSense(void *argument)
                               HAL_MAX_DELAY);
         }
 
-        if (mcp9808_ctx.state == MCP9808_STATE_FAULT)
+        state_status = mcp9808_drv_get_state(&mcp9808_ctx, &mcp9808_state);
+        if (state_status == MCP9808_STATUS_OK && mcp9808_state == MCP9808_STATE_FAULT)
         {
             HAL_UART_Transmit(&huart3,
                               (uint8_t *)"MCP9808 FAULT -> recover request\r\n",
@@ -341,20 +313,16 @@ void StartTaskSense(void *argument)
             recover_status = mcp9808_drv_recover(&mcp9808_ctx);
 
             (void)snprintf(temp_msg,
-                           sizeof(temp_msg),
-                           "RECOVER status=%s | state=%s active=%s last=%s faults=%u consec=%u\r\n",
-                           mcp9808_status_to_string(recover_status),
-                           mcp9808_state_to_string(mcp9808_ctx.state),
-                           mcp9808_status_to_string(mcp9808_ctx.active_error),
-                           mcp9808_status_to_string(mcp9808_ctx.last_error),
-                           (unsigned int)mcp9808_ctx.fault_count,
-                           (unsigned int)mcp9808_ctx.consecutive_fail_count);
+                            sizeof(temp_msg),
+                            "MCP9808 recover status=%s\r\n",
+                            mcp9808_status_to_string(recover_status));
 
             HAL_UART_Transmit(&huart3,
                               (uint8_t *)temp_msg,
                               strlen(temp_msg),
                               HAL_MAX_DELAY);
         }
+
 
         osDelay(1000U);
     }
@@ -370,10 +338,91 @@ void StartTaskSense(void *argument)
 void StartTaskControl(void *argument)
 {
   /* USER CODE BEGIN StartTaskControl */
+  int16_t last_valid_temp_x10;
+  char ctrl_msg[128];
 
-  /* Infinite loop */
-  for(;;)
+  ThermalSupervisionState supervision_state;
+  PumpCtx pump_ctx;
+  PumpStatus pump_status;
+  PumpCommand pump_command = PUMP_COMMAND_OFF;
+  PumpCommand previous_pump_command = PUMP_COMMAND_OFF;
+
+  pump_status = pump_drv_init(&pump_ctx, PUMP_CMD_GPIO_Port, PUMP_CMD_Pin);
+
+  if (pump_status != PUMP_STATUS_OK)
   {
+    HAL_UART_Transmit(&huart3,
+                      (uint8_t *)"Pump init FAIL\r\n",
+                      strlen("Pump init FAIL\r\n"),
+                      HAL_MAX_DELAY);
+
+    for (;;)
+    {
+      osDelay(1000U);
+    }
+  }
+
+  pump_status = pump_drv_set_off(&pump_ctx);
+  if (pump_status != PUMP_STATUS_OK)
+  {
+    HAL_UART_Transmit(&huart3,
+                      (uint8_t *)"Pump force OFF init FAIL\r\n",
+                      strlen("Pump force OFF init FAIL\r\n"),
+                      HAL_MAX_DELAY);
+  }
+
+  for (;;)
+  {
+    supervision_state = thermal_supervision_get_last_valid_temperature(&last_valid_temp_x10);
+
+    if (supervision_state == THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT)
+    {
+      pump_command = PUMP_COMMAND_OFF;
+    }
+    else if (supervision_state == THERMAL_SUPERVISION_STATE_OVERTEMP)
+    {
+      pump_command = PUMP_COMMAND_ON;
+    }
+    else
+    {
+      pump_command = pump_control_logic_update(last_valid_temp_x10);
+    }
+
+    if (pump_command == PUMP_COMMAND_ON)
+    {
+      pump_status = pump_drv_set_on(&pump_ctx);
+    }
+    else
+    {
+      pump_status = pump_drv_set_off(&pump_ctx);
+    }
+
+    if (pump_status != PUMP_STATUS_OK)
+    {
+      (void)snprintf(ctrl_msg,
+                     sizeof(ctrl_msg),
+                     "Pump command apply FAIL status=%d\r\n",
+                     (int)pump_status);
+
+      HAL_UART_Transmit(&huart3,
+                        (uint8_t *)ctrl_msg,
+                        strlen(ctrl_msg),
+                        HAL_MAX_DELAY);
+    }
+    else if (pump_command != previous_pump_command)
+    {
+      (void)snprintf(ctrl_msg,
+                     sizeof(ctrl_msg),
+                     "Pump command -> %s\r\n",
+                     (pump_command == PUMP_COMMAND_ON) ? "ON" : "OFF");
+
+      HAL_UART_Transmit(&huart3,
+                        (uint8_t *)ctrl_msg,
+                        strlen(ctrl_msg),
+                        HAL_MAX_DELAY);
+
+      previous_pump_command = pump_command;
+    }
 
     osDelay(1000U);
   }
