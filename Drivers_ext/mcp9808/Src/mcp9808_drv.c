@@ -21,6 +21,8 @@
 static Mcp9808Status mcp9808_drv_is_adress_valid(uint8_t addr_7bit);
 static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(const Mcp9808Ctx *ctx, int16_t *out_temp_x10);
 static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(const Mcp9808Ctx *ctx);
+static Mcp9808Status mcp9808_drv_is_address_valid(uint8_t addr_7bit);
+static void mcp9808_drv_update_fault_on_failure(Mcp9808Ctx *ctx, Mcp9808Status error_status);
 
 /**
  * @brief  Validates the given 7-bit I2C address for the MCP9808 sensor.
@@ -29,7 +31,7 @@ static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(const Mcp9808Ctx *ctx);
  * 
  * @return MCP9808_STATUS_OK if conversion succeeded, MCP9808_STATUS_ERR_PARAM if pointer is NULL...
  */
-static Mcp9808Status mcp9808_drv_is_adress_valid(uint8_t addr_7bit)
+static Mcp9808Status mcp9808_drv_is_address_valid(uint8_t addr_7bit)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
     
@@ -85,28 +87,35 @@ static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(const Mcp9808Ctx *ctx, i
         temp_x10 = (q4 * 10) / 16
         Use symmetric rounding (important for negatives)
         */
-        int32_t x10;
+        int32_t temp_x10;
         if (q4 >= 0)
         {
-            x10 = (q4 * 10 + 8) / 16;
+            temp_x10 = (q4 * 10 + 8) / 16;
         }
         else
         {
-            x10 = (q4 * 10 - 8) / 16;
+            temp_x10 = (q4 * 10 - 8) / 16;
         }
 
         /* Defensive clamp to int16_t */
-        if (x10 > (int32_t)INT16_MAX) 
+        if (temp_x10 > (int32_t)INT16_MAX) 
         { 
-            x10 = (int32_t)INT16_MAX; 
+            temp_x10 = (int32_t)INT16_MAX; 
         }
-        if (x10 < (int32_t)INT16_MIN) 
+        if (temp_x10 < (int32_t)INT16_MIN) 
         { 
-            x10 = (int32_t)INT16_MIN; 
+            temp_x10 = (int32_t)INT16_MIN; 
         }
 
-        *out_temp_x10 = (int16_t)x10;
-        mcp9808_status = MCP9808_STATUS_OK;
+        if ((temp_x10 < MCP9808_VALID_TEMP_MIN_X10) || (temp_x10 > MCP9808_VALID_TEMP_MAX_X10))
+        {
+            mcp9808_status = MCP9808_STATUS_ERR_INVALID_TEMP;
+        }
+        else
+        {
+            *out_temp_x10 = (int16_t)temp_x10;
+            mcp9808_status = MCP9808_STATUS_OK;
+        }
     }
 
     return mcp9808_status;
@@ -137,16 +146,46 @@ static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(const Mcp9808Ctx *ctx)
         {
             mcp9808_status = MCP9808_STATUS_OK;
         }
+        else if (hal_status == HAL_TIMEOUT)
+        {
+            mcp9808_status = MCP9808_STATUS_ERR_TIMEOUT;
+        }
         else
         {
-            (void)HAL_I2C_DeInit(&hi2c1);
-            (void)HAL_I2C_Init(&hi2c1);
-
             mcp9808_status = MCP9808_STATUS_ERR_I2C;
         }
     }
 
     return mcp9808_status;
+}
+
+static void mcp9808_drv_update_fault_on_failure(Mcp9808Ctx *ctx, Mcp9808Status error_status)
+{
+    ctx->last_temp_x10 = MCP9808_INVALID_TEMP_X10;
+    ctx->last_error = error_status;
+
+    if (ctx->consecutive_fail_count < UINT8_MAX)
+    {
+        ctx->consecutive_fail_count++;
+    }
+
+    if (ctx->consecutive_fail_count >= MCP9808_MAX_CONSEC_FAIL )
+    {
+        if (ctx->state != MCP9808_STATE_FAULT)
+        {
+            if (ctx->fault_count < UINT16_MAX)
+            {
+                ctx->fault_count++;
+            }
+        }
+        
+        ctx->state = MCP9808_STATE_FAULT;
+        ctx->active_error = error_status;
+    }
+    else
+    {
+        ctx->state = MCP9808_STATE_READY;
+    }
 }
 
 /** @section Global Functions */
@@ -164,18 +203,24 @@ Mcp9808Status mcp9808_drv_init(Mcp9808Ctx *ctx, uint8_t addr_7bit)
         mcp9808_status = MCP9808_STATUS_ERR_PARAM;
         /* Cannot initialize ctx */
     }
-    else if (mcp9808_drv_is_adress_valid(addr_7bit) != MCP9808_STATUS_OK)
+    else if (mcp9808_drv_is_address_valid(addr_7bit) != MCP9808_STATUS_OK)
     {
         mcp9808_status = MCP9808_STATUS_ERR_PARAM;
         ctx->state = MCP9808_STATE_UNINIT; /* Set state to uninitialized */
-        ctx->fault_count++; /* Increment fault count */
     }
     else
     {
         ctx->i2c_addr_7bit = addr_7bit;
-        ctx->state = MCP9808_STATE_IDLE;
+        ctx->state = MCP9808_STATE_READY;
         ctx->last_temp_x10 = MCP9808_INVALID_TEMP_X10;
         ctx->fault_count = 0U;
+        ctx->consecutive_fail_count = 0U;
+        ctx->active_error = MCP9808_STATUS_OK;
+        ctx->last_error = MCP9808_STATUS_OK;
+
+        ctx->rx_buf[0] = 0U;
+        ctx->rx_buf[1] = 0U;
+
         mcp9808_status = MCP9808_STATUS_OK;
     }
 
@@ -198,33 +243,42 @@ Mcp9808Status mcp9808_drv_get_temperature_x10(Mcp9808Ctx *ctx, int16_t *out_temp
     {
         mcp9808_status = MCP9808_STATUS_ERR_INIT;
     }
+    /* If 3 consecutive failures => Fault */
+    else if (ctx->state == MCP9808_STATE_FAULT)
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_FAULT;
+    }
     else
     {
+        /* Read ambient temperature raw data */
         mcp9808_status = mcp9808_drv_read_ambient_temp_raw(ctx);
 
-        if (mcp9808_status != MCP9808_STATUS_OK)
+        if (mcp9808_status == MCP9808_STATUS_OK)
         {
-            ctx->state = MCP9808_STATE_FAULT;
-            ctx->fault_count++;
-        }
-        else
-        {
+            /* Convert raw temperature data to x10 format */
             mcp9808_status = mcp9808_drv_convert_raw_to_tempx10(ctx, &temp_x10);
 
-            if (mcp9808_status != MCP9808_STATUS_OK)
+            if (mcp9808_status == MCP9808_STATUS_OK)
             {
-                ctx->state = MCP9808_STATE_FAULT;
-                ctx->fault_count++;
+                ctx->last_temp_x10 = temp_x10;
+                *out_temp_x10 = temp_x10;
+
+                ctx->consecutive_fail_count = 0U;
+                ctx->active_error = MCP9808_STATUS_OK;
+                ctx->state = MCP9808_STATE_READY;
             }
             else
             {
-                ctx->last_temp_x10 = temp_x10;
-                ctx->state = MCP9808_STATE_IDLE;
-                *out_temp_x10 = temp_x10;
+                mcp9808_drv_update_fault_on_failure(ctx, mcp9808_status);
+                
             }
         }
+        else
+        {
+            mcp9808_drv_update_fault_on_failure(ctx, mcp9808_status);
+        }
     }
-
+    
     return mcp9808_status;
 }
 
@@ -270,5 +324,97 @@ Mcp9808Status mcp9808_drv_get_fault_count(const Mcp9808Ctx *ctx, uint16_t *out_f
         *out_fault_count = ctx->fault_count;
         mcp9808_status = MCP9808_STATUS_OK;
     }
+    return mcp9808_status;
+}
+
+/** @brief Gets the active error status of the MCP9808 sensor.
+ */
+Mcp9808Status mcp9808_drv_get_active_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_active_error)
+{
+    Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
+
+    if ((ctx == NULL) || (out_active_error == NULL))
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_PARAM;
+    }
+    else if (ctx->state == MCP9808_STATE_UNINIT)
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_INIT;
+    }
+    else
+    {
+        *out_active_error = ctx->active_error;
+        mcp9808_status = MCP9808_STATUS_OK;
+    }
+    return mcp9808_status;
+}
+
+/** @brief Gets the last error status of the MCP9808 sensor.
+ */
+Mcp9808Status mcp9808_drv_get_last_error(const Mcp9808Ctx *ctx, Mcp9808Status *out_last_error)
+{
+    Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
+
+    if ((ctx == NULL) || (out_last_error == NULL))
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_PARAM;
+    }
+    else if (ctx->state == MCP9808_STATE_UNINIT)
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_INIT;
+    }
+    else
+    {
+        *out_last_error = ctx->last_error;
+        mcp9808_status = MCP9808_STATUS_OK;
+    }
+    return mcp9808_status;
+}
+
+/** @brief Attempts to recover the MCP9808 sensor from a fault state by reinitializing it.
+ */
+Mcp9808Status mcp9808_drv_recover(Mcp9808Ctx *ctx)
+{
+
+    Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
+    HAL_StatusTypeDef hal_status;
+
+    if (ctx == NULL)
+    {
+        mcp9808_status = MCP9808_STATUS_ERR_PARAM;
+    }
+    else
+    {
+        hal_status = HAL_I2C_DeInit(&hi2c1);
+        if (hal_status != HAL_OK)
+        {
+            mcp9808_status = MCP9808_STATUS_ERR_I2C;
+        }
+        else
+        {
+            hal_status = HAL_I2C_Init(&hi2c1);
+            if (hal_status != HAL_OK)
+            {
+                mcp9808_status = MCP9808_STATUS_ERR_I2C;
+            }
+            else
+            {
+                /* Ping the sensor to check if it's responsive after I2C reinit */
+                hal_status = HAL_I2C_IsDeviceReady(&hi2c1, (ctx->i2c_addr_7bit << 1), 3U, (uint32_t)MCP9808_I2C_TIMEOUT_MS);
+                if (hal_status != HAL_OK)
+                {
+                    mcp9808_status = MCP9808_STATUS_ERR_I2C;
+                }
+                else
+                {
+                    ctx->consecutive_fail_count = 0U;
+                    ctx->state = MCP9808_STATE_READY;
+
+                    /* Note : only valid temperature readings allow to proceed active error = MCP9808_STATUS_OK */
+                }
+            }
+        }
+    }
+
     return mcp9808_status;
 }

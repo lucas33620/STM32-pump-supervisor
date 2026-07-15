@@ -18,6 +18,10 @@
  */
 
 /** @section Defines */
-#define MCP9808_I2C_TIMEOUT_MS (100U) /**< Timeout for I2C operations in milliseconds. */
+/**< Timeout for I2C operations in milliseconds. */
+#define MCP9808_I2C_TIMEOUT_MS          (100U) 
+
+/* Max consecutive acquisition failures before latching FAULT */
+#define MCP9808_MAX_CONSEC_FAIL         (3U)
 
 #endif /* MCP9808_CFG_H */
