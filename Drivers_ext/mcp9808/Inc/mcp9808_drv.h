@@ -73,7 +73,7 @@ Mcp9808Status mcp9808_drv_get_temperature_x10(Mcp9808Ctx *ctx, int16_t *out_temp
  * 
  * @return MCP9808_STATUS_OK if the state was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
  */
-Mcp9808Status mcp9808_drv_get_state(Mcp9808Ctx *ctx, Mcp9808State *out_state);
+Mcp9808Status mcp9808_drv_get_state(const Mcp9808Ctx *ctx, Mcp9808State *out_state);
 
 /** @brief Gets the fault count of the MCP9808 sensor.
  * 
@@ -82,6 +82,6 @@ Mcp9808Status mcp9808_drv_get_state(Mcp9808Ctx *ctx, Mcp9808State *out_state);
  * 
  * @return MCP9808_STATUS_OK if the fault count was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
  */
-Mcp9808Status mcp9808_drv_get_fault_count(Mcp9808Ctx *ctx, uint16_t *out_fault_count);
+Mcp9808Status mcp9808_drv_get_fault_count(const Mcp9808Ctx *ctx, uint16_t *out_fault_count);
 
 #endif

@@ -19,8 +19,8 @@
 
 /** @section Static Functions */
 static Mcp9808Status mcp9808_drv_is_adress_valid(uint8_t addr_7bit);
-static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(Mcp9808Ctx *ctx, int16_t *out_temp_x10);
-static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(Mcp9808Ctx *ctx);
+static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(const Mcp9808Ctx *ctx, int16_t *out_temp_x10);
+static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(const Mcp9808Ctx *ctx);
 
 /**
  * @brief  Validates the given 7-bit I2C address for the MCP9808 sensor.
@@ -49,7 +49,7 @@ static Mcp9808Status mcp9808_drv_is_adress_valid(uint8_t addr_7bit)
  * 
  * @return MCP9808_STATUS_OK if conversion succeeded, MCP9808_STATUS_ERR_PARAM if pointer is NULL.
  */
-static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(Mcp9808Ctx *ctx, int16_t *out_temp_x10)
+static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(const Mcp9808Ctx *ctx, int16_t *out_temp_x10)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
 
@@ -119,7 +119,7 @@ static Mcp9808Status mcp9808_drv_convert_raw_to_tempx10(Mcp9808Ctx *ctx, int16_t
  * 
  * @return MCP9808_STATUS_OK if conversion succeeded, MCP9808_STATUS_ERR_PARAM if pointer is NULL...
  */
-static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(Mcp9808Ctx *ctx)
+static Mcp9808Status mcp9808_drv_read_ambient_temp_raw(const Mcp9808Ctx *ctx)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
     HAL_StatusTypeDef hal_status;
@@ -186,10 +186,8 @@ Mcp9808Status mcp9808_drv_init(Mcp9808Ctx *ctx, uint8_t addr_7bit)
  */
 Mcp9808Status mcp9808_drv_get_temperature_x10(Mcp9808Ctx *ctx, int16_t *out_temp_x10)
 {
-    Mcp9808Status mcp9808_status;
+    Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
     int16_t temp_x10;
-
-    mcp9808_status = MCP9808_STATUS_OK;
     temp_x10 = 0;
 
     if ((ctx == NULL) || (out_temp_x10 == NULL))
@@ -232,7 +230,7 @@ Mcp9808Status mcp9808_drv_get_temperature_x10(Mcp9808Ctx *ctx, int16_t *out_temp
 
 /** @brief Gets the state of the MCP9808 sensor.
  */
-Mcp9808Status mcp9808_drv_get_state(Mcp9808Ctx *ctx, Mcp9808State *out_state)
+Mcp9808Status mcp9808_drv_get_state(const Mcp9808Ctx *ctx, Mcp9808State *out_state)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
 
@@ -255,7 +253,7 @@ Mcp9808Status mcp9808_drv_get_state(Mcp9808Ctx *ctx, Mcp9808State *out_state)
 
 /** @brief Gets the fault count of the MCP9808 sensor.
  */
-Mcp9808Status mcp9808_drv_get_fault_count(Mcp9808Ctx *ctx, uint16_t *out_fault_count)
+Mcp9808Status mcp9808_drv_get_fault_count(const Mcp9808Ctx *ctx, uint16_t *out_fault_count)
 {
     Mcp9808Status mcp9808_status = MCP9808_STATUS_OK;
 
