@@ -11,14 +11,29 @@
 
 ## Transition logic
 
-- INIT -> Normal *if initialization succeeds*
+| Source        | Event / Condition               | Destination   | Action                |
+| ------------- | ------------------------------- | ------------- | --------------------- |
+| INIT          | Initialization successful       | NORMAL        | publish boot OK trace |
+| INIT          | Critical initialization failure | FAULT_LATCHED | store critical fault  |
+| NORMAL        | Recoverable fault confirmed     | DEGRADED      | limit operation       |
+| NORMAL        | Critical fault confirmed        | FAULT_LATCHED | stop pump command     |
+| DEGRADED      | Nominal recovery condition met  | NORMAL        | clear degraded state  |
+| DEGRADED      | Critical fault confirmed        | FAULT_LATCHED | enter safe state      |
+| FAULT_LATCHED | User reset / clear authorized   | INIT          | reinitialize system   |
 
-- NORMAL -> DEGRADED *if a critical recoverable fault is detected*
+## Module interactions
 
-- NORMAL -> FAULT_LATCHED *if a latched critical fault is detected*
+| Module              | Relation with `operating_modes`                | Purpose                                                                                    |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| thermal_supervision | provides status / fault conditions             | Supplies recoverable or critical conditions used for mode transitions                      |
+| pump_control_logic  | consumes current system mode                   | Adapts pump command behavior depending on `INIT`, `NORMAL`, `DEGRADED`, or `FAULT_LATCHED` |
+| fault_manager       | provides fault severity and active fault state | Supports transition decisions toward `DEGRADED` or `FAULT_LATCHED`                         |
+| diag_manager        | consumes current mode                          | Reports current operating mode and transition-related status through diagnostics           |
+| watchdog_manager    | may provide supervision fault status           | Can contribute to critical transition decisions if supervision fails                       |
 
-- DEGRADED -> NORMAL *only if fault disappears and recovery policy allows it*
+## Design rules
 
-- DEGRADED -> FAULT_LATCHED *if fault severity increases or recovery fails*
-
-- Any mode -> INIT *after reset
+- `operating_modes` owns the current system mode
+- Only `operating_modes` is allowed to change the current mode
+- Other application modules can request or justify a transition, but do not switch modes directly
+- The current mode is exposed through a dedicated interface for application and diagnostic use
