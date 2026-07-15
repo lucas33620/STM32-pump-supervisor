@@ -92,7 +92,7 @@ PumpStatus pump_drv_set_off(PumpCtx *ctx)
 /**
  * @brief Gets the current command state of the pump.
  */
-PumpStatus pump_drv_get_command_state(PumpCtx *ctx, PumpState *pump_state)
+PumpStatus pump_drv_get_command_state(const PumpCtx *ctx, PumpState *pump_state)
 {
     PumpStatus pump_status = PUMP_STATUS_OK;
 

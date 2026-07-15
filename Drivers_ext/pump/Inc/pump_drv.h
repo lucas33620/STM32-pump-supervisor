@@ -86,6 +86,6 @@ PumpStatus pump_drv_set_off(PumpCtx *ctx);
  *
  * @return PUMP_STATUS_OK if the operation succeeded or error status otherwise.
  */
-PumpStatus pump_drv_get_command_state(PumpCtx *ctx, PumpState *pump_state);
+PumpStatus pump_drv_get_command_state(const PumpCtx *ctx, PumpState *pump_state);
 
 #endif /* PUMP_DRV_H */
