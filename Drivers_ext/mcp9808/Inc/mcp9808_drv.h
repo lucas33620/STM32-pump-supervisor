@@ -119,30 +119,4 @@ Mcp9808Status mcp9808_drv_get_last_error(const Mcp9808Ctx *ctx, Mcp9808Status *o
  */
 Mcp9808Status mcp9808_drv_recover(Mcp9808Ctx *ctx);
 
-/** @brief Gets the active error status of the MCP9808 sensor.
- * 
- * @param ctx Pointer to the MCP9808 context structure.
- * @param out_active_error Pointer to a variable where the active error status will be stored.
- * 
- * @return MCP9808_STATUS_OK if the active error status was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
- */
-Mcp9808Status mcp9808_drv_get_active_error(Mcp9808Ctx *ctx, Mcp9808Status *out_active_error);
-
-/** @brief Gets the last error status of the MCP9808 sensor.
- * 
- * @param ctx Pointer to the MCP9808 context structure.
- * @param out_last_error Pointer to a variable where the last error status will be stored.
- * 
- * @return MCP9808_STATUS_OK if the last error status was read successfully, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
- */
-Mcp9808Status mcp9808_drv_get_last_error(Mcp9808Ctx *ctx, Mcp9808Status *out_last_error);
-
-/** @brief Attempts to recover the MCP9808 sensor from a fault state by reinitializing it.
- * 
- * @param ctx Pointer to the MCP9808 context structure.
- * 
- * @return MCP9808_STATUS_OK if recovery succeeded, MCP9808_STATUS_ERR_PARAM if a parameter is invalid...
- */
-Mcp9808Status mcp9808_drv_recover(Mcp9808Ctx *ctx);
-
 #endif
