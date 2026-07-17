@@ -12,6 +12,7 @@
 /** @section Include */
 #include "thermal_supervision.h"
 #include "mcp9808_drv.h"
+#include "fault_manager.h"
 
 /** @section Define*/
 
@@ -33,9 +34,15 @@ ThermalSupervisionState thermal_supervision_update_valid_temperature(int16_t tem
         temperature_x10 > THERMAL_SUPERVISION_TEMP_MAX_THRESHOLD_X10)
     {
         current_state = THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT;
+        fault_manager_raise_fault(FAULT_ID_F002_TEMPERATURE_RANGE);
     }
     else
     {
+        if (fault_manager_is_fault_active(FAULT_ID_F002_TEMPERATURE_RANGE) == true)
+        {
+            fault_manager_clear_fault(FAULT_ID_F002_TEMPERATURE_RANGE);
+        }
+
         last_valid_temperature_x10 = temperature_x10;
 
         if (current_state == THERMAL_SUPERVISION_STATE_OVERTEMP)
@@ -50,10 +57,15 @@ ThermalSupervisionState thermal_supervision_update_valid_temperature(int16_t tem
             if (temperature_x10 >= THERMAL_SUPERVISION_OVERTEMP_FAULT_THRESHOLD_X10)
             {
                 current_state = THERMAL_SUPERVISION_STATE_OVERTEMP;
+                fault_manager_raise_fault(FAULT_ID_F003_OVERTEMPERATURE);
             }
             else
             {
                 current_state = THERMAL_SUPERVISION_STATE_OK;
+                if (fault_manager_is_fault_active(FAULT_ID_F003_OVERTEMPERATURE) == true)
+                {
+                    fault_manager_clear_fault(FAULT_ID_F003_OVERTEMPERATURE);
+                }
             }
         }
     }

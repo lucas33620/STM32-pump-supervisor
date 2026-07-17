@@ -35,6 +35,7 @@
 #include "operating_modes.h"
 #include "thermal_supervision.h"
 #include "control_logic.h"
+#include "fault_manager.h"
 
 /* USER CODE END Includes */
 
@@ -275,6 +276,18 @@ void StartTaskSense(void *argument)
         {
             supervision_state = thermal_supervision_update_valid_temperature(temp_x10);
 
+            /* Clear fault if it's active */
+            if (fault_manager_is_fault_active(FAULT_ID_F001_SENSOR_COMMUNICATION))
+            {
+                fault_manager_clear_fault(FAULT_ID_F001_SENSOR_COMMUNICATION);
+
+                HAL_UART_Transmit(
+                    &huart3,
+                    (uint8_t *)"FAULT F001 cleared\r\n",
+                    strlen("FAULT F001 cleared\r\n"),
+                    HAL_MAX_DELAY);
+            }
+
             (void)snprintf(temp_msg,
                            sizeof(temp_msg),
                            "TEMP=%d.%dC state=%d\r\n",
@@ -305,10 +318,23 @@ void StartTaskSense(void *argument)
         state_status = mcp9808_drv_get_state(&mcp9808_ctx, &mcp9808_state);
         if (state_status == MCP9808_STATUS_OK && mcp9808_state == MCP9808_STATE_FAULT)
         {
-            HAL_UART_Transmit(&huart3,
-                              (uint8_t *)"MCP9808 FAULT -> recover request\r\n",
-                              strlen("MCP9808 FAULT -> recover request\r\n"),
-                              HAL_MAX_DELAY);
+            /* 3 consecutive sensor acquisition failures */
+            if (!fault_manager_is_fault_active(FAULT_ID_F001_SENSOR_COMMUNICATION))
+            {
+                fault_manager_raise_fault(FAULT_ID_F001_SENSOR_COMMUNICATION);
+
+                HAL_UART_Transmit(
+                    &huart3,
+                    (uint8_t *)"FAULT F001 raised\r\n",
+                    strlen("FAULT F001 raised\r\n"),
+                    HAL_MAX_DELAY);
+            }
+
+            HAL_UART_Transmit(
+                &huart3,
+                (uint8_t *)"MCP9808 FAULT -> recover request\r\n",
+                strlen("MCP9808 FAULT -> recover request\r\n"),
+                HAL_MAX_DELAY);
 
             recover_status = mcp9808_drv_recover(&mcp9808_ctx);
 
