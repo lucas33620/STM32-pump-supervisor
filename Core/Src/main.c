@@ -23,6 +23,7 @@
 #include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
+#include "fault_manager.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -99,9 +100,10 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   /* SETUP */
+  fault_manager_init();
+
   strcpy((char*)tx_buffer, "SYSTEM INIT\r\n");
   HAL_UART_Transmit(&huart3, tx_buffer, strlen((char*)tx_buffer), HAL_MAX_DELAY);
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
