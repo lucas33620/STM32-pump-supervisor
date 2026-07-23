@@ -1,6 +1,6 @@
 /**
  * @file    pump_drv.c
- * @brief   Sensor management module for pump.
+ * @brief   Pump actuator command driver.
  * @author  Syloria, Lucas Baquey
  * * @copyright MIT License
  * * Summary: Permission is granted, free of charge, to any person obtaining a copy
