@@ -17,7 +17,11 @@
 /** @section Typedef */
 
 /** @section Variables */
-static PumpCommand current_pump_command = PUMP_COMMAND_OFF; // Initialize pump command to OFF
+static PumpControlResult current_control_result =
+{
+    .command = PUMP_COMMAND_OFF,
+    .region = PUMP_CONTROL_REGION_INVALID_MEASUREMENT
+};
 
 /** @section Static Functions */
 
@@ -26,26 +30,54 @@ static PumpCommand current_pump_command = PUMP_COMMAND_OFF; // Initialize pump c
 /**
  * @brief      Updates the pump control logic based on the current temperature with hysteresis x10.
  */
-PumpCommand pump_control_logic_update(ThermalSupervisionState supervision_state, int16_t temperature_x10)
+PumpControlResult pump_control_logic_update(
+    ThermalSupervisionState supervision_state,
+    int16_t temperature_x10)
 {
     switch (supervision_state)
     {
         case THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT:
-            current_pump_command = PUMP_COMMAND_OFF;
+            current_control_result.command = PUMP_COMMAND_OFF;
+            current_control_result.region =
+                PUMP_CONTROL_REGION_INVALID_MEASUREMENT;
             break;
 
         case THERMAL_SUPERVISION_STATE_OVERTEMP:
-            current_pump_command = PUMP_COMMAND_ON;
+            current_control_result.command = PUMP_COMMAND_ON;
+            current_control_result.region =
+                PUMP_CONTROL_REGION_OVERTEMPERATURE;
             break;
 
         case THERMAL_SUPERVISION_STATE_OK:
-            if ((current_pump_command == PUMP_COMMAND_OFF) && (temperature_x10 >= CONTROL_LOGIC_TEMP_ON_THRESHOLD_X10))
+            if (temperature_x10 <=
+                CONTROL_LOGIC_TEMP_OFF_THRESHOLD_X10)
             {
-                current_pump_command = PUMP_COMMAND_ON;
+                current_control_result.region =
+                    PUMP_CONTROL_REGION_BELOW_OFF_THRESHOLD;
             }
-            else if ((current_pump_command == PUMP_COMMAND_ON) &&  (temperature_x10 <= CONTROL_LOGIC_TEMP_OFF_THRESHOLD_X10))
+            else if (temperature_x10 <
+                     CONTROL_LOGIC_TEMP_ON_THRESHOLD_X10)
             {
-                current_pump_command = PUMP_COMMAND_OFF;
+                current_control_result.region =
+                    PUMP_CONTROL_REGION_BETWEEN_THRESHOLDS;
+            }
+            else
+            {
+                current_control_result.region =
+                    PUMP_CONTROL_REGION_ABOVE_ON_THRESHOLD;
+            }
+
+            if ((current_control_result.command == PUMP_COMMAND_OFF) &&
+                (temperature_x10 >=
+                 CONTROL_LOGIC_TEMP_ON_THRESHOLD_X10))
+            {
+                current_control_result.command = PUMP_COMMAND_ON;
+            }
+            else if ((current_control_result.command == PUMP_COMMAND_ON) &&
+                     (temperature_x10 <=
+                      CONTROL_LOGIC_TEMP_OFF_THRESHOLD_X10))
+            {
+                current_control_result.command = PUMP_COMMAND_OFF;
             }
             else
             {
@@ -54,18 +86,20 @@ PumpCommand pump_control_logic_update(ThermalSupervisionState supervision_state,
             break;
 
         default:
-            current_pump_command = PUMP_COMMAND_OFF;
+            current_control_result.command = PUMP_COMMAND_OFF;
+            current_control_result.region =
+                PUMP_CONTROL_REGION_INVALID_MEASUREMENT;
             break;
     }
 
-    return current_pump_command;
+    return current_control_result;
 }
 
 /**
  * @brief      Gets the current pump command.
  */
-PumpCommand pump_control_logic_get_current_command(void)
+PumpControlResult pump_control_logic_get_current_result(void)
 {
-    return current_pump_command;
+    return current_control_result;
 }
 

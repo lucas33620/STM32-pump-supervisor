@@ -25,6 +25,21 @@ typedef enum {
     PUMP_COMMAND_ON
 } PumpCommand;
 
+typedef enum
+{
+    PUMP_CONTROL_REGION_BELOW_OFF_THRESHOLD = 0,
+    PUMP_CONTROL_REGION_BETWEEN_THRESHOLDS,
+    PUMP_CONTROL_REGION_ABOVE_ON_THRESHOLD,
+    PUMP_CONTROL_REGION_INVALID_MEASUREMENT,
+    PUMP_CONTROL_REGION_OVERTEMPERATURE
+} PumpControlRegion;
+
+typedef struct
+{
+    PumpCommand command;
+    PumpControlRegion region;
+} PumpControlResult;
+
 /** @section Variables */
 
 /** @section Static Functions */
@@ -39,13 +54,13 @@ typedef enum {
  *
  * @return  The updated pump command.
  */
-PumpCommand pump_control_logic_update(ThermalSupervisionState supervision_state, int16_t temperature_c);
+PumpControlResult pump_control_logic_update(ThermalSupervisionState supervision_state, int16_t temperature_c);
 
 /**
- * @brief	  Gets the current pump command.
+ * @brief	  Gets the current pump control result.
  *
- * @return  The current pump command.
+ * @return  The current pump control result.
  */
-PumpCommand pump_control_logic_get_current_command(void);
+PumpControlResult pump_control_logic_get_current_result(void);
 
 #endif /* CONTROL_LOGIC_H */
