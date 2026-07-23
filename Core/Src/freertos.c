@@ -401,26 +401,16 @@ void StartTaskControl(void *argument)
   {
     supervision_state = thermal_supervision_get_last_valid_temperature(&last_valid_temp_x10);
 
-    if (supervision_state == THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT)
-    {
-      pump_command = PUMP_COMMAND_OFF;
-    }
-    else if (supervision_state == THERMAL_SUPERVISION_STATE_OVERTEMP)
-    {
-      pump_command = PUMP_COMMAND_ON;
-    }
-    else
-    {
-      pump_command = pump_control_logic_update(last_valid_temp_x10);
-    }
+    /* Only control_logic API is authorized to modify the pump command */
+    pump_command = pump_control_logic_update(supervision_state, last_valid_temp_x10);
 
     if (pump_command == PUMP_COMMAND_ON)
     {
-      pump_status = pump_drv_set_on(&pump_ctx);
+        pump_status = pump_drv_set_on(&pump_ctx);
     }
     else
     {
-      pump_status = pump_drv_set_off(&pump_ctx);
+        pump_status = pump_drv_set_off(&pump_ctx);
     }
 
     if (pump_status != PUMP_STATUS_OK)

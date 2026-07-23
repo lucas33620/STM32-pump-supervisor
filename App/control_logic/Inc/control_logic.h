@@ -14,6 +14,7 @@
 
 /** @section Include */
 #include <stdint.h>
+#include "thermal_supervision.h"
 #include "control_logic_cfg.h" // Include the configuration header for control logic
 
 /** @section Define*/
@@ -33,10 +34,18 @@ typedef enum {
 /**
  * @brief	  Updates the pump control logic based on the current temperature with hysteresis x10.
  *
+ * @param supervision_state  The current thermal supervision state.
  * @param temperature_c  The current temperature in degrees Celsius x 10.
  *
  * @return  The updated pump command.
  */
-PumpCommand pump_control_logic_update(int16_t temperature_c);
+PumpCommand pump_control_logic_update(ThermalSupervisionState supervision_state, int16_t temperature_c);
+
+/**
+ * @brief	  Gets the current pump command.
+ *
+ * @return  The current pump command.
+ */
+PumpCommand pump_control_logic_get_current_command(void);
 
 #endif /* CONTROL_LOGIC_H */

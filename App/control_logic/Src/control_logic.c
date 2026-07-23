@@ -11,14 +11,13 @@
 
 /** @section Include */
 #include "control_logic.h" // Include the header for control logic functions
-#include "pump_drv.h" // Include the header for pump control functions
 
 /** @section Define*/
 
 /** @section Typedef */
 
 /** @section Variables */
-static PumpCommand current_pump_state = PUMP_COMMAND_OFF; // Initialize pump state to OFF
+static PumpCommand current_pump_command = PUMP_COMMAND_OFF; // Initialize pump command to OFF
 
 /** @section Static Functions */
 
@@ -27,17 +26,46 @@ static PumpCommand current_pump_state = PUMP_COMMAND_OFF; // Initialize pump sta
 /**
  * @brief      Updates the pump control logic based on the current temperature with hysteresis x10.
  */
-PumpCommand pump_control_logic_update(int16_t temperature_x10)
+PumpCommand pump_control_logic_update(ThermalSupervisionState supervision_state, int16_t temperature_x10)
 {
-
-    if (current_pump_state == PUMP_COMMAND_OFF && temperature_x10 >= CONTROL_LOGIC_TEMP_ON_THRESHOLD_X10)
+    switch (supervision_state)
     {
-        current_pump_state = PUMP_COMMAND_ON;
-    }
-    else if (current_pump_state == PUMP_COMMAND_ON && temperature_x10 <= CONTROL_LOGIC_TEMP_OFF_THRESHOLD_X10)
-    {
-        current_pump_state = PUMP_COMMAND_OFF;
+        case THERMAL_SUPERVISION_STATE_INVALID_MEASUREMENT:
+            current_pump_command = PUMP_COMMAND_OFF;
+            break;
+
+        case THERMAL_SUPERVISION_STATE_OVERTEMP:
+            current_pump_command = PUMP_COMMAND_ON;
+            break;
+
+        case THERMAL_SUPERVISION_STATE_OK:
+            if ((current_pump_command == PUMP_COMMAND_OFF) && (temperature_x10 >= CONTROL_LOGIC_TEMP_ON_THRESHOLD_X10))
+            {
+                current_pump_command = PUMP_COMMAND_ON;
+            }
+            else if ((current_pump_command == PUMP_COMMAND_ON) &&  (temperature_x10 <= CONTROL_LOGIC_TEMP_OFF_THRESHOLD_X10))
+            {
+                current_pump_command = PUMP_COMMAND_OFF;
+            }
+            else
+            {
+                /* Keep current command inside hysteresis band. */
+            }
+            break;
+
+        default:
+            current_pump_command = PUMP_COMMAND_OFF;
+            break;
     }
 
-    return current_pump_state;
+    return current_pump_command;
 }
+
+/**
+ * @brief      Gets the current pump command.
+ */
+PumpCommand pump_control_logic_get_current_command(void)
+{
+    return current_pump_command;
+}
+
