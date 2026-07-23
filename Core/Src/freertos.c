@@ -36,6 +36,9 @@
 #include "thermal_supervision.h"
 #include "control_logic.h"
 #include "fault_manager.h"
+#include "can_msg_codec.h"
+#include "can_status_mapper.h"
+
 
 /* USER CODE END Includes */
 
@@ -370,7 +373,11 @@ void StartTaskControl(void *argument)
   ThermalSupervisionState supervision_state;
   PumpCtx pump_ctx;
   PumpStatus pump_status;
-  PumpCommand pump_command = PUMP_COMMAND_OFF;
+  PumpControlResult control_result =
+  {
+      .command = PUMP_COMMAND_OFF,
+      .region = PUMP_CONTROL_REGION_INVALID_MEASUREMENT
+  };
   PumpCommand previous_pump_command = PUMP_COMMAND_OFF;
 
   pump_status = pump_drv_init(&pump_ctx, PUMP_CMD_GPIO_Port, PUMP_CMD_Pin);
@@ -402,9 +409,9 @@ void StartTaskControl(void *argument)
     supervision_state = thermal_supervision_get_last_valid_temperature(&last_valid_temp_x10);
 
     /* Only control_logic API is authorized to modify the pump command */
-    pump_command = pump_control_logic_update(supervision_state, last_valid_temp_x10);
+    control_result  = pump_control_logic_update(supervision_state, last_valid_temp_x10);
 
-    if (pump_command == PUMP_COMMAND_ON)
+    if (control_result.command == PUMP_COMMAND_ON)
     {
         pump_status = pump_drv_set_on(&pump_ctx);
     }
@@ -425,19 +432,19 @@ void StartTaskControl(void *argument)
                         strlen(ctrl_msg),
                         HAL_MAX_DELAY);
     }
-    else if (pump_command != previous_pump_command)
+    else if (control_result.command != previous_pump_command)
     {
       (void)snprintf(ctrl_msg,
                      sizeof(ctrl_msg),
                      "Pump command -> %s\r\n",
-                     (pump_command == PUMP_COMMAND_ON) ? "ON" : "OFF");
+                     (control_result.command == PUMP_COMMAND_ON) ? "ON" : "OFF");
 
       HAL_UART_Transmit(&huart3,
                         (uint8_t *)ctrl_msg,
                         strlen(ctrl_msg),
                         HAL_MAX_DELAY);
 
-      previous_pump_command = pump_command;
+      previous_pump_command = control_result.command;
     }
 
     osDelay(1000U);
@@ -446,20 +453,242 @@ void StartTaskControl(void *argument)
 }
 
 /* USER CODE BEGIN Header_StartTaskDiag */
-/**
-* @brief Function implementing the task_diag thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTaskDiag */
+static HAL_StatusTypeDef task_diag_configure_can_filter(void)
+{
+    CAN_FilterTypeDef filter = {0};
+
+    filter.FilterBank = 0U;
+    filter.FilterMode = CAN_FILTERMODE_IDMASK;
+    filter.FilterScale = CAN_FILTERSCALE_32BIT;
+    filter.FilterIdHigh = 0U;
+    filter.FilterIdLow = 0U;
+    filter.FilterMaskIdHigh = 0U;
+    filter.FilterMaskIdLow = 0U;
+    filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+    filter.FilterActivation = ENABLE;
+    filter.SlaveStartFilterBank = 14U;
+
+    return HAL_CAN_ConfigFilter(&hcan1, &filter);
+}
+
 void StartTaskDiag(void *argument)
 {
-  /* USER CODE BEGIN StartTaskDiag */
-  /* Infinite loop */
-  for (;;)
-  {
-    osDelay(1);
-  }
+    /* USER CODE BEGIN StartTaskDiag */
+
+    CanMsgCodecStatus codec_status;
+    CanStatusMapperStatus mapper_status;
+    HAL_StatusTypeDef can_status;
+    HAL_StatusTypeDef hal_status;
+
+    PumpControlResult control_result;
+    CanThermalState can_thermal_state;
+
+    int16_t temperature_x10 = 0;
+
+    uint8_t thermal_payload[CAN_MSG_THERMAL_STATUS_DLC] = {0U};
+    uint8_t rx_payload[CAN_MSG_THERMAL_STATUS_DLC] = {0U};
+
+    char diag_msg[128];
+
+    CAN_TxHeaderTypeDef tx_header = {0};
+    CAN_RxHeaderTypeDef rx_header = {0};
+
+    uint32_t tx_mailbox = 0U;
+
+    tx_header.StdId = CAN_MSG_THERMAL_STATUS_ID;
+    tx_header.ExtId = 0U;
+    tx_header.IDE = CAN_ID_STD;
+    tx_header.RTR = CAN_RTR_DATA;
+    tx_header.DLC = CAN_MSG_THERMAL_STATUS_DLC;
+    tx_header.TransmitGlobalTime = DISABLE;
+
+    hal_status = task_diag_configure_can_filter();
+
+    if (hal_status != HAL_OK)
+    {
+        (void)snprintf(
+            diag_msg,
+            sizeof(diag_msg),
+            "CAN filter config FAIL status=%d\r\n",
+            (int)hal_status);
+
+        HAL_UART_Transmit(
+            &huart3,
+            (uint8_t *)diag_msg,
+            strlen(diag_msg),
+            HAL_MAX_DELAY);
+
+        for (;;)
+        {
+            osDelay(1000U);
+        }
+    }
+
+    HAL_UART_Transmit(
+        &huart3,
+        (uint8_t *)"CAN filter config OK\r\n",
+        strlen("CAN filter config OK\r\n"),
+        HAL_MAX_DELAY);
+
+    hal_status = HAL_CAN_Start(&hcan1);
+
+    if (hal_status != HAL_OK)
+    {
+        (void)snprintf(
+            diag_msg,
+            sizeof(diag_msg),
+            "CAN start FAIL status=%d\r\n",
+            (int)hal_status);
+
+        HAL_UART_Transmit(
+            &huart3,
+            (uint8_t *)diag_msg,
+            strlen(diag_msg),
+            HAL_MAX_DELAY);
+
+        for (;;)
+        {
+            osDelay(1000U);
+        }
+    }
+
+    HAL_UART_Transmit(
+        &huart3,
+        (uint8_t *)"CAN start OK\r\n",
+        strlen("CAN start OK\r\n"),
+        HAL_MAX_DELAY);
+
+    for (;;)
+    {
+        (void)thermal_supervision_get_last_valid_temperature(
+            &temperature_x10);
+
+        control_result =
+            pump_control_logic_get_current_result();
+
+        mapper_status =
+            can_status_mapper_map_thermal_state(
+                control_result.region,
+                &can_thermal_state);
+
+        if (mapper_status == CAN_STATUS_MAPPER_STATUS_OK)
+        {
+            codec_status =
+                can_msg_codec_build_thermal_status(
+                    thermal_payload,
+                    can_thermal_state,
+                    temperature_x10,
+                    control_result.command);
+        }
+        else
+        {
+            codec_status = CAN_MSG_CODEC_STATUS_ERR_VALUE;
+        }
+
+        if (codec_status == CAN_MSG_CODEC_STATUS_OK)
+        {
+            can_status =
+                bsp_can_send(
+                    &hcan1,
+                    &tx_header,
+                    thermal_payload,
+                    &tx_mailbox);
+
+            if (can_status == HAL_OK)
+            {
+                HAL_UART_Transmit(
+                    &huart3,
+                    (uint8_t *)"CAN thermal status queued\r\n",
+                    strlen("CAN thermal status queued\r\n"),
+                    HAL_MAX_DELAY);
+
+                osDelay(10U);
+
+                if (HAL_CAN_GetRxFifoFillLevel(
+                        &hcan1,
+                        CAN_RX_FIFO0) > 0U)
+                {
+                    if (HAL_CAN_GetRxMessage(
+                            &hcan1,
+                            CAN_RX_FIFO0,
+                            &rx_header,
+                            rx_payload) == HAL_OK)
+                    {
+                        (void)snprintf(
+                            diag_msg,
+                            sizeof(diag_msg),
+                            "RX id=0x%03lX dlc=%lu data="
+                            "%02X %02X %02X %02X "
+                            "%02X %02X %02X %02X\r\n",
+                            rx_header.StdId,
+                            rx_header.DLC,
+                            rx_payload[0],
+                            rx_payload[1],
+                            rx_payload[2],
+                            rx_payload[3],
+                            rx_payload[4],
+                            rx_payload[5],
+                            rx_payload[6],
+                            rx_payload[7]);
+
+                        HAL_UART_Transmit(
+                            &huart3,
+                            (uint8_t *)diag_msg,
+                            strlen(diag_msg),
+                            HAL_MAX_DELAY);
+                    }
+                    else
+                    {
+                        HAL_UART_Transmit(
+                            &huart3,
+                            (uint8_t *)"CAN RX read FAIL\r\n",
+                            strlen("CAN RX read FAIL\r\n"),
+                            HAL_MAX_DELAY);
+                    }
+                }
+                else
+                {
+                    HAL_UART_Transmit(
+                        &huart3,
+                        (uint8_t *)"CAN RX FIFO empty\r\n",
+                        strlen("CAN RX FIFO empty\r\n"),
+                        HAL_MAX_DELAY);
+                }
+            }
+            else
+            {
+                (void)snprintf(
+                    diag_msg,
+                    sizeof(diag_msg),
+                    "CAN thermal status TX FAIL status=%d\r\n",
+                    (int)can_status);
+
+                HAL_UART_Transmit(
+                    &huart3,
+                    (uint8_t *)diag_msg,
+                    strlen(diag_msg),
+                    HAL_MAX_DELAY);
+            }
+        }
+        else
+        {
+            (void)snprintf(
+                diag_msg,
+                sizeof(diag_msg),
+                "CAN thermal status build FAIL status=%d\r\n",
+                (int)codec_status);
+
+            HAL_UART_Transmit(
+                &huart3,
+                (uint8_t *)diag_msg,
+                strlen(diag_msg),
+                HAL_MAX_DELAY);
+        }
+
+        osDelay(500U);
+    }
+
+    /* USER CODE END StartTaskDiag */
 }
 
 /* USER CODE BEGIN Header_StartTaskSupervisor */
@@ -471,11 +700,13 @@ void StartTaskDiag(void *argument)
 /* USER CODE END Header_StartTaskSupervisor */
 void StartTaskSupervisor(void *argument)
 {
-  /* USER CODE BEGIN StartTaskSupervisor */
+  
 
   /* Infinite loop */
   for(;;)
   {
+    
+
     osDelay(1000);
   }
   /* USER CODE END StartTaskSupervisor */
