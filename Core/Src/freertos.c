@@ -259,8 +259,8 @@ void StartTaskSense(void *argument)
         {
             thermal_supervision_set_invalid_measurement();
             mcp9808_status = mcp9808_drv_init(&mcp9808_ctx, 0x18U);
-             if (mcp9808_status == MCP9808_STATUS_OK)
-             {
+            if (mcp9808_status == MCP9808_STATUS_OK)
+            {
                 HAL_UART_Transmit(&huart3,
                                     (uint8_t *)"MCP9808 init recovery OK\r\n",
                                     strlen("MCP9808 init recovery OK\r\n"),
@@ -291,17 +291,6 @@ void StartTaskSense(void *argument)
                     HAL_MAX_DELAY);
             }
 
-            (void)snprintf(temp_msg,
-                           sizeof(temp_msg),
-                           "TEMP=%d.%dC state=%d\r\n",
-                           temp_x10 / 10,
-                           (temp_x10 < 0) ? (-temp_x10 % 10) : (temp_x10 % 10),
-                           (int)supervision_state);
-
-            HAL_UART_Transmit(&huart3,
-                              (uint8_t *)temp_msg,
-                              strlen(temp_msg),
-                              HAL_MAX_DELAY);
         }
         else
         {
@@ -524,12 +513,6 @@ void StartTaskDiag(void *argument)
         }
     }
 
-    HAL_UART_Transmit(
-        &huart3,
-        (uint8_t *)"CAN filter config OK\r\n",
-        strlen("CAN filter config OK\r\n"),
-        HAL_MAX_DELAY);
-
     hal_status = HAL_CAN_Start(&hcan1);
 
     if (hal_status != HAL_OK)
@@ -551,12 +534,6 @@ void StartTaskDiag(void *argument)
             osDelay(1000U);
         }
     }
-
-    HAL_UART_Transmit(
-        &huart3,
-        (uint8_t *)"CAN start OK\r\n",
-        strlen("CAN start OK\r\n"),
-        HAL_MAX_DELAY);
 
     for (;;)
     {
@@ -596,12 +573,6 @@ void StartTaskDiag(void *argument)
 
             if (can_status == HAL_OK)
             {
-                HAL_UART_Transmit(
-                    &huart3,
-                    (uint8_t *)"CAN thermal status queued\r\n",
-                    strlen("CAN thermal status queued\r\n"),
-                    HAL_MAX_DELAY);
-
                 osDelay(10U);
 
                 if (HAL_CAN_GetRxFifoFillLevel(
@@ -612,32 +583,7 @@ void StartTaskDiag(void *argument)
                             &hcan1,
                             CAN_RX_FIFO0,
                             &rx_header,
-                            rx_payload) == HAL_OK)
-                    {
-                        (void)snprintf(
-                            diag_msg,
-                            sizeof(diag_msg),
-                            "RX id=0x%03lX dlc=%lu data="
-                            "%02X %02X %02X %02X "
-                            "%02X %02X %02X %02X\r\n",
-                            rx_header.StdId,
-                            rx_header.DLC,
-                            rx_payload[0],
-                            rx_payload[1],
-                            rx_payload[2],
-                            rx_payload[3],
-                            rx_payload[4],
-                            rx_payload[5],
-                            rx_payload[6],
-                            rx_payload[7]);
-
-                        HAL_UART_Transmit(
-                            &huart3,
-                            (uint8_t *)diag_msg,
-                            strlen(diag_msg),
-                            HAL_MAX_DELAY);
-                    }
-                    else
+                            rx_payload) != HAL_OK)
                     {
                         HAL_UART_Transmit(
                             &huart3,
@@ -645,14 +591,6 @@ void StartTaskDiag(void *argument)
                             strlen("CAN RX read FAIL\r\n"),
                             HAL_MAX_DELAY);
                     }
-                }
-                else
-                {
-                    HAL_UART_Transmit(
-                        &huart3,
-                        (uint8_t *)"CAN RX FIFO empty\r\n",
-                        strlen("CAN RX FIFO empty\r\n"),
-                        HAL_MAX_DELAY);
                 }
             }
             else
